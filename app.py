@@ -672,11 +672,8 @@ def create_dash_app(data, text_column="text"):
 
 path = "data/example.csv"
 
-
-df = pd.read_csv(path, skiprows=[1186])
+df = pd.read_csv(path)
 app = create_dash_app(df)
 
 if __name__ == "__main__":
-    app.run_server(debug=True, host='0.0.0.0', port=8051)
-
-# pip requirements
+    app.run_server(host='0.0.0.0', port=8051)
