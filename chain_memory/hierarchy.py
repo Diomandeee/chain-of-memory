@@ -1,14 +1,15 @@
-from typing import List,Tuple, Optional
-from plot import plot_3d_scatter
+from typing import List, Tuple, Optional
 from llama_index import SimpleDirectoryReader
-import re
+from plot import plot_3d_scatter
 import pandas as pd
+import argparse
+import re
 
 
 def split_text(text: str) -> List[str]:
     """
     Splits the text into lines based on a specific pattern.
-    
+
     Args:
     text (str): The text to be split.
 
@@ -108,6 +109,7 @@ def create_cleaned_dataframe(hierarchical_structure: dict) -> pd.DataFrame:
     Returns:
     pd.DataFrame: The cleaned dataframe.
     """
+
     def flatten_hierarchy(node, prefix=""):
         flat_dict = {}
         for key, value in node.items():
@@ -150,7 +152,6 @@ def get_pdf(pdf_path: str) -> SimpleDirectoryReader:
     return pdf
 
 
-
 def split_pdf(pdf: SimpleDirectoryReader, start_page: int, end_page: int) -> List:
     """
     Splits the PDF into selected pages.
@@ -187,10 +188,9 @@ def append_text(selected_pages: List) -> Tuple[pd.DataFrame, List]:
     new_text = "\n".join(text_lines)
     cleaned_text = clean_text(new_text)
     grouped_text = split_into_sublists(cleaned_text)
-    sub_groups = split_sublists_subsublist(grouped_text)
     hierarchical_structure = create_hierarchy(grouped_text)
     df = create_cleaned_dataframe(hierarchical_structure)
-    return df, sub_groups
+    return df
 
 
 def format_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -218,7 +218,9 @@ def format_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_remaining_pages(pdf: SimpleDirectoryReader, start_page: int, end_page: int) -> pd.DataFrame:
+def get_remaining_pages(
+    pdf: SimpleDirectoryReader, start_page: int, end_page: int
+) -> pd.DataFrame:
     """
     Gets the remaining pages of the PDF after a specific range.
 
@@ -274,8 +276,9 @@ def remove_patterns(text: str, string_to_remove: str, replacement: str = "") -> 
     return text
 
 
-
-def merge_df(df: pd.DataFrame, remaning_df: pd.DataFrame, string_to_remove: Optional[str] = None) -> pd.DataFrame:
+def merge_df(
+    df: pd.DataFrame, remaning_df: pd.DataFrame, string_to_remove: Optional[str] = None
+) -> pd.DataFrame:
     """
     Merges two dataframes and processes them further based on specific conditions.
 
@@ -310,9 +313,7 @@ def merge_df(df: pd.DataFrame, remaning_df: pd.DataFrame, string_to_remove: Opti
     # Fill any remaining NaN values in 'x' and 'y' with appropriate values
     df["x"].fillna(method="ffill", inplace=True)
     df["y"].fillna(method="ffill", inplace=True)
-    if pd.isna(df.at[0, "x"]) and pd.isna(df.at[0, "y"]):
-        df.at[0, "x"] = 1
-        df.at[0, "y"] = 1
+
     df = df.drop(["Content_x", "Hierarchy"], axis=1)
 
     df = df.rename(columns={"Content_y": "Content"})
@@ -325,47 +326,12 @@ def merge_df(df: pd.DataFrame, remaning_df: pd.DataFrame, string_to_remove: Opti
     return df
 
 
-def split_sublists_subsublist(grouped_text: List[List[str]]) -> List[List[List[str]]]:
-    """
-    Splits each sublist into subsublists based on the unique first number in the sublist.
-
-    Args:
-    grouped_text (List[List[str]]): The grouped text.
-
-    Returns:
-    List[List[List[str]]]: A list of subsublists.
-    """
-    # Split each sublist into subsublists based on the unique first number in the sublist
-    subsublists = []
-    current_subsublist = []
-    current_number = None
-
-    for group in grouped_text:
-        number = re.match(r"^\d+", group[0]).group()
-        if number != current_number:
-            # A new number, start a new subsublist
-            if current_subsublist:
-                subsublists.append(current_subsublist)
-            current_subsublist = [group]
-            current_number = number
-        else:
-            # The same number, add to the current subsublist
-            current_subsublist.append(group)
-
-    # Append the last subsublist
-    if current_subsublist:
-        subsublists.append(current_subsublist)
-
-    return subsublists
-
-
 def proccess_pdf(
     pdf_path: str,
     start_end_page: Tuple[int, int],
     remainig_start_end_page: Tuple[int, int],
     string_to_remove: Optional[str] = None,
     text_column: str = "Content",
-    visualize: bool = True,
 ) -> SimpleDirectoryReader:
     """
     Processes the PDF file and visualizes data.
@@ -384,8 +350,7 @@ def proccess_pdf(
     pdf = get_pdf(pdf_path)
     start_page, end_page = start_end_page
     selected_pages = split_pdf(pdf, start_page, end_page)
-    df, sub_groups = append_text(selected_pages)
-    neighbors = len(sub_groups)
+    df = append_text(selected_pages)
     chapter_df = format_dataframe(df)
     remainig_start_page, remainig_end_page = remainig_start_end_page
 
@@ -394,22 +359,72 @@ def proccess_pdf(
 
     pages_df = get_remaining_pages(pdf, remainig_start_page, remainig_end_page)
     df = merge_df(chapter_df, pages_df, string_to_remove=string_to_remove)
-    df["n_neighbors"] = neighbors
 
     plot_3d_scatter(
         file_path_or_dataframe=df,
         text_column=text_column,
-        show=visualize,
+        show=True,
         label_column="page_label",
     )
     return pdf
 
 
-pdf_path = "data/CTDAbook.pdf"
+def main():
+    parser = argparse.ArgumentParser(
+        description="Process a PDF file for data visualization."
+    )
+    parser.add_argument(
+        "--pdf_path",
+        type=str,
+        default="chain_memory/data/CTDAbook.pdf",
+        help="Path to the PDF file. Default is 'chain_memory/data/CTDAbook.pdf'.",
+    )
+    parser.add_argument(
+        "--start_page",
+        type=int,
+        default=1,
+        help="Start page for main processing. Default is 4.",
+    )
+    parser.add_argument(
+        "--end_page",
+        type=int,
+        default=7,
+        help="End page for main processing. Default is 9.",
+    )
+    parser.add_argument(
+        "--remaining_start_page",
+        type=int,
+        default=15,
+        help="Start page for remaining pages. Default is 17.",
+    )
+    parser.add_argument(
+        "--remaining_end_page",
+        type=int,
+        help="End page for remaining pages. If not set, processes till the end of the document.",
+    )
+    parser.add_argument(
+        "--string_to_remove",
+        type=str,
+        default=None,
+        help="String pattern to remove from the content. Default is None.",
+    )
+    parser.add_argument(
+        "--text_column",
+        type=str,
+        default="Content",
+        help="Column name for text data. Default is 'Content'.",
+    )
+
+    args = parser.parse_args()
+
+    proccess_pdf(
+        pdf_path=args.pdf_path,
+        start_end_page=(args.start_page, args.end_page),
+        remainig_start_end_page=(args.remaining_start_page, args.remaining_end_page),
+        string_to_remove=args.string_to_remove,
+        text_column=args.text_column,
+    )
 
 
-proccess_pdf(
-    pdf_path=pdf_path,
-    start_end_page=(4, 9),
-    remainig_start_end_page=(17, None),
-)
+if __name__ == "__main__":
+    main()

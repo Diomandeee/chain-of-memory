@@ -1,41 +1,34 @@
 from typing import Union
 import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
 import numpy as np
-import plotly.express as px
+from textwrap import wrap
 
 
-def wrap_line_to_max_length(line: str, max_length: int) -> list[str]:
+def wrap_line_to_max_length(line: str, max_length: int) -> list:
     """
     Wraps a single line of text to the specified maximum length.
 
     Parameters:
         line: str
-            The line of text to be wrapped.
+            The line to be wrapped.
         max_length: int
             The maximum length for each wrapped line.
 
     Returns:
-        list[str]
+        list
             A list of wrapped lines.
     """
-    wrapped_line = []
-    while len(line) > max_length:
-        cut_at = max_length
-
-        # Find the last space within the max length
-        space_index = line.rfind(" ", 0, max_length)
-
-        if space_index != -1:
-            cut_at = space_index
-
-        wrapped_line.append(line[:cut_at].rstrip())  # Remove trailing spaces
-        line = line[cut_at:].lstrip()  # Remove leading spaces
-    wrapped_line.append(line)
-    return wrapped_line
+    return wrap(line, max_length)
 
 
-def wrap_text(text: str, max_length: int = 100, max_lines: int = 5) -> str:
+def wrap_text(
+    text: str,
+    max_length: int = 100,
+    max_lines: int = float("inf"),
+    ellipsis: bool = False,
+) -> str:
     """
     Wraps and truncates the given text to the specified maximum length and number of lines,
     and returns it separated by HTML break tags for double-spacing.
@@ -46,7 +39,9 @@ def wrap_text(text: str, max_length: int = 100, max_lines: int = 5) -> str:
         max_length: int
             The maximum length for each wrapped line.
         max_lines: int
-            The maximum number of lines to include.
+            The maximum number of lines to include. Defaults to showing all lines.
+        ellipsis: bool
+            Flag to add ellipsis if text is truncated.
 
     Returns:
         str
@@ -56,12 +51,14 @@ def wrap_text(text: str, max_length: int = 100, max_lines: int = 5) -> str:
     wrapped_lines = [wrap_line_to_max_length(line, max_length) for line in lines]
     flattened_lines = [line for sublist in wrapped_lines for line in sublist]
 
-    # Truncate the text if it exceeds the maximum number of lines
-    truncated_lines = flattened_lines[:max_lines]
-
-    # Optionally, you can add an ellipsis to indicate that the text has been truncated
-    if len(flattened_lines) > max_lines:
-        truncated_lines[-1] += "..."
+    # Handle infinite max_lines
+    if max_lines == float("inf"):
+        truncated_lines = flattened_lines
+    else:
+        truncated_lines = flattened_lines[:max_lines]
+        # Add ellipsis if text is truncated
+        if ellipsis and len(flattened_lines) > max_lines:
+            truncated_lines[-1] += "..."
 
     return "<br><br>".join(truncated_lines)
 
@@ -106,6 +103,9 @@ def prepare_dataframe(df: pd.DataFrame, text_column: str) -> pd.DataFrame:
         umap_df = pd.DataFrame(df["umap_embeddings"].tolist(), columns=umap_columns)
         df = pd.concat([df.drop(columns=["umap_embeddings"]), umap_df], axis=1)
 
+    if "n_neighbors" not in df.columns:
+        df["n_neighbors"] = 0
+
     return df
 
 
@@ -130,11 +130,8 @@ def add_coordinate_hover_info(
 
     base_cols = [
         "time_t",
-        "n_parts",
         "author",
         "create_time",
-        "cluster_label",
-        "n_neighbors",
         "formatted_content",
     ]
 
@@ -162,6 +159,17 @@ def add_coordinate_hover_info(
 
 
 def generate_traces(df: pd.DataFrame, system_colors: list, colorscale: str) -> list:
+    """
+    Generate traces for plotting.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+        system_colors (list): The list of system colors.
+        colorscale (str): The colorscale for the plot.
+
+    Returns:
+        list: The list of traces for plotting.
+    """
     scatter_trace_umap = generate_scatter_trace(
         df, "x", "y", "z", "formatted_content_umap", system_colors, colorscale
     )
@@ -192,6 +200,17 @@ def generate_traces(df: pd.DataFrame, system_colors: list, colorscale: str) -> l
 
 
 def generate_colors(df: pd.DataFrame, label_column: str) -> list:
+    """
+    Generate a list of colors for the markers in the plot.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        label_column (str): The column name for the cluster labels.
+
+    Returns:
+        list: The list of colors for the markers.
+    """
+
     rainbow_scale = px.colors.sequential.Rainbow
     return [
         rainbow_scale[int(i)]
@@ -208,6 +227,21 @@ def generate_scatter_trace(
     colors: list,
     colorscale: str,
 ) -> go.Scatter3d:
+    """
+    Generate a scatter trace for a 3D scatter plot.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        x_col (str): The column name for the x-axis values.
+        y_col (str): The column name for the y-axis values.
+        z_col (str): The column name for the z-axis values.
+        hover_text (str): The column name for the hover text values.
+        colors (list): The list of colors for the markers.
+        colorscale (str): The colorscale for the markers.
+
+    Returns:
+        go.Scatter3d: The scatter trace for the 3D scatter plot.
+    """
     return go.Scatter3d(
         x=df[x_col],
         y=df[y_col],
@@ -230,6 +264,18 @@ def generate_scatter_trace(
 def generate_line_trace(
     df: pd.DataFrame, x_col: str, y_col: str, z_col: str
 ) -> go.Scatter3d:
+    """
+    Generate a 3D line trace for a given DataFrame.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        x_col (str): The column name for the x-axis values.
+        y_col (str): The column name for the y-axis values.
+        z_col (str): The column name for the z-axis values.
+
+    Returns:
+        go.Scatter3d: The 3D line trace.
+    """
     return go.Scatter3d(
         x=df[x_col],
         y=df[y_col],
@@ -252,6 +298,18 @@ def generate_layout(
     title: str = "Chain of Memories",
     title_font_size: int = 20,
 ) -> go.Layout:
+    """
+    Generate the layout for the Chain of Memories plot.
+
+    Parameters:
+        dragmode (str): The drag mode for the plot. Default is "turntable".
+        result3d (pd.DataFrame): The 3D result data. Default is None.
+        title (str): The title of the plot. Default is "Chain of Memories".
+        title_font_size (int): The font size of the title. Default is 20.
+
+    Returns:
+        go.Layout: The generated layout for the plot.
+    """
     updatemenus = [
         dict(
             type="buttons",
@@ -336,6 +394,20 @@ def plot_3d_scatter(
     dragmode: str = "turntable",
     show: bool = False,
 ):
+    """
+    Plots a 3D scatter plot using the provided file path or dataframe.
+
+    Parameters:
+    - file_path_or_dataframe (Union[str, pd.DataFrame]): The file path or dataframe containing the data.
+    - text_column (str): The column name in the dataframe that contains the text data.
+    - label_column (str): The column name in the dataframe that contains the cluster labels.
+    - colorscale (str): The colorscale to use for the scatter plot.
+    - dragmode (str): The drag mode for the plot.
+    - show (bool): Whether to show the plot or return the figure object.
+
+    Returns:
+    - fig (go.Figure): The figure object representing the 3D scatter plot.
+    """
     df = file_path_or_dataframe
     df = prepare_dataframe(df, text_column)
     system_colors = generate_colors(df, label_column)

@@ -48,6 +48,5 @@ Thumbs.db
 ..server/
 .env/
 .venv/
-
-
+venv/
 ```
