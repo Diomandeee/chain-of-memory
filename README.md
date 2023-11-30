@@ -45,12 +45,27 @@ To run the app, execute the following command in the root directory of your proj
 python chain_memory/app.py --host 0.0.0.0 --port 8051
 ```
 
+Certainly! Let's condense the explanation of the `process_pdf` script for the README:
+
+---
+
 ### Running the `process_pdf` Script
 
-To run the `process_pdf` script, use the following command with the necessary arguments:
+The `process_pdf` script is a key component of the Chain Memory Dash App, designed for extracting and visualizing data from PDF documents. 
+
+#### Script Overview
+- **PDF Processing**: It handles loading, splitting, and cleaning text from specified pages of a PDF.
+- **Data Structuring**: The script creates a hierarchical structure from the text, facilitating a detailed analysis.
+- **Visualization Preparation**: Converts the structured data into a DataFrame, ready for 3D scatter plot visualization.
+- **Flexibility**: Customizable through command-line arguments to target specific pages, remove unwanted text, and adjust data handling.
+
+#### Running the Script
+
+Run the script in the root directory of your project using the following command:
 
 ```bash
 python chain_memory/hierarchy.py 
 ```
 
+Customize the script's execution with arguments like `--pdf_path` for the file location, `--start_page` and `--end_page` for page range, `--remaining_start_page` and `--remaining_end_page` for additional pages, and more. These options allow you to tailor the script to various PDF structures and content needs.
 
