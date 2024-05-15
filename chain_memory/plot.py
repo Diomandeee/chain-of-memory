@@ -420,3 +420,12 @@ def plot_3d_scatter(
         fig.show()
     else:
         return fig
+
+# create virtual environment .venv
+# python3 -m venv .venv
+
+# activate virtual environment
+# source .venv/bin/activate
+
+# install requirements
+# pip install -r requirements.txt

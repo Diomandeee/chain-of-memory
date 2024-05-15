@@ -44,9 +44,6 @@ To run the app, execute the following command in the root directory of your proj
 ```bash
 python chain_memory/app.py --host 0.0.0.0 --port 8051
 ```
-
-Certainly! Let's condense the explanation of the `process_pdf` script for the README:
-
 ---
 
 ### Running the `process_pdf` Script

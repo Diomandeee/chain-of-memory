@@ -1,5 +1,5 @@
 from typing import List, Tuple, Optional
-from llama_index import SimpleDirectoryReader
+from llama_index.core import SimpleDirectoryReader
 from plot import plot_3d_scatter
 import pandas as pd
 import argparse
